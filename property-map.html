@@ -578,44 +578,6 @@ function load(){ properties = loadLocal(); }
 let map, markers={}, pinPopupEl=null, ps, poiOverlays=[];
 const TYPE_COLOR={sale:'#c17f3a',lease:'#1565c0',rent:'#ad1457'};
 
-kakao.maps.load(function(){
-  const container=document.getElementById('map');
-  const options={center:new kakao.maps.LatLng(37.5665,126.978),level:5};
-  map=new kakao.maps.Map(container,options);
-
-  // Map click — place pending pin
-  kakao.maps.event.addListener(map,'click',function(mouseEvent){
-    if(pendingId===null) return;
-    const p=properties.find(x=>x.id===pendingId);
-    if(!p){pendingId=null;hideHint();return;}
-    const ll=mouseEvent.latLng;
-    p.lat=ll.getLat(); p.lng=ll.getLng();
-    save(); addMarker(p); pendingId=null; hideHint(); selectProperty(p.id);
-  });
-
-  ps=new kakao.maps.services.Places();
-
-  // Show loading state
-  document.getElementById('sbList').innerHTML='<div class="loading-spinner">📡 데이터 불러오는 중…</div>';
-  load(); // load local first for instant display
-  properties.forEach(p=>addMarker(p));
-  applyLang();
-  renderList();
-  if(properties.length>0) selectProperty(properties[0].id);
-  // Then fetch from Sheets
-  loadFromSheets().then(ok=>{
-    if(ok){
-      // clear old markers
-      Object.keys(markers).forEach(id=>{ markers[id].setMap(null); delete markers[id]; });
-      poiOverlays.forEach(o=>o.setMap(null)); poiOverlays=[];
-      properties.forEach(p=>addMarker(p));
-      renderList();
-      if(properties.length>0) selectProperty(properties[0].id);
-    }
-  });
-});
-
-// ── Markers ───────────────────────────────────────────────────────────────
 
 function makeMarkerImage(type, isActive){
   const c=TYPE_COLOR[type]||'#2d5a3d';
