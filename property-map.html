@@ -221,6 +221,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:0
     </div>
     <button class="btn-io btn-export" onclick="exportData()" title="내보내기">📤</button>
     <label class="btn-io btn-export" title="가져오기" style="cursor:pointer">📥<input type="file" id="importFile" accept=".json" onchange="importData(event)" style="display:none"></label>
+    <button class="btn-io btn-export" onclick="refreshFromSheets()" title="새로고침">🔄</button>
     <button class="btn-add" id="btnAdd" onclick="openAddModal()">+ 추가</button>
   </div>
 </header>
@@ -375,6 +376,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:0
 // ── Constants ─────────────────────────────────────────────────────────────
 const KRW_TO_CNY = 0.0052;
 const KAKAO_KEY = '5c41ceda44a443f7cf77ca18ca00b04e';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx9pic56EFAxT1UD3alVrox1AEj_oAf3omrSdMLAg-ufx4x8I0CC5K1mo5UlQZaSq_74g/exec';
 
 // ── i18n ──────────────────────────────────────────────────────────────────
 let lang = 'ko';
@@ -526,8 +528,39 @@ function getMediaUrls(){
 const STORAGE_KEY='myPropertyMap_v5';
 let properties=[],activeId=null,pendingId=null,editingId=null;
 
-function save(){ localStorage.setItem(STORAGE_KEY,JSON.stringify(properties)); }
-function load(){ try{ properties=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]'); }catch{ properties=[]; } }
+// localStorage fallback for offline
+function saveLocal(){ localStorage.setItem(STORAGE_KEY,JSON.stringify(properties)); }
+function loadLocal(){ try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]'); }catch{ return []; } }
+
+// Sheets sync
+async function loadFromSheets(){
+  try{
+    const res = await fetch(SCRIPT_URL);
+    const data = await res.json();
+    if(data.status==='ok' && Array.isArray(data.properties)){
+      properties = data.properties;
+      saveLocal();
+      return true;
+    }
+  }catch(e){ console.warn('Sheets load failed, using local:', e); }
+  return false;
+}
+
+async function syncToSheets(action, property, id){
+  try{
+    const body = {action};
+    if(property) body.property = property;
+    if(id) body.id = id;
+    await fetch(SCRIPT_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify(body)
+    });
+  }catch(e){ console.warn('Sheets sync failed:', e); }
+}
+
+function save(){ saveLocal(); }
+function load(){ properties = loadLocal(); }
 
 // ── Kakao Map ─────────────────────────────────────────────────────────────
 let map, markers={}, pinPopupEl=null, ps, poiOverlays=[];
@@ -549,11 +582,24 @@ kakao.maps.load(function(){
 
   ps=new kakao.maps.services.Places();
 
-  load();
+  // Show loading state
+  document.getElementById('sbList').innerHTML='<div class="loading-spinner">📡 데이터 불러오는 중…</div>';
+  load(); // load local first for instant display
   properties.forEach(p=>addMarker(p));
   applyLang();
   renderList();
   if(properties.length>0) selectProperty(properties[0].id);
+  // Then fetch from Sheets
+  loadFromSheets().then(ok=>{
+    if(ok){
+      // clear old markers
+      Object.keys(markers).forEach(id=>{ markers[id].setMap(null); delete markers[id]; });
+      poiOverlays.forEach(o=>o.setMap(null)); poiOverlays=[];
+      properties.forEach(p=>addMarker(p));
+      renderList();
+      if(properties.length>0) selectProperty(properties[0].id);
+    }
+  });
 });
 
 // ── Markers ───────────────────────────────────────────────────────────────
@@ -889,7 +935,7 @@ function editActive(){ const p=properties.find(x=>x.id===activeId); if(p) openEd
 function deleteActive(){
   const p=properties.find(x=>x.id===activeId);
   if(!p||!confirm(t('confirmDelete'))) return;
-  removeMarker(p.id); properties=properties.filter(x=>x.id!==activeId);
+  removeMarker(p.id); syncToSheets('delete', null, p.id); properties=properties.filter(x=>x.id!==activeId);
   activeId=null; save(); renderList(); renderDetail(null); refreshMarkers();
 }
 
@@ -973,6 +1019,21 @@ function openRoadview(){
 }
 function closeRoadview(){
   document.getElementById('rvOverlay').style.display = 'none';
+}
+
+
+async function refreshFromSheets(){
+  const btn = document.querySelector('[onclick="refreshFromSheets()"]');
+  if(btn){ btn.textContent='⏳'; btn.disabled=true; }
+  const ok = await loadFromSheets();
+  if(ok){
+    Object.keys(markers).forEach(id=>{ markers[id].setMap(null); delete markers[id]; });
+    poiOverlays.forEach(o=>o.setMap(null)); poiOverlays=[];
+    properties.forEach(p=>addMarker(p));
+    activeId=null; renderList(); renderDetail(null); refreshMarkers();
+    if(properties.length>0) selectProperty(properties[0].id);
+  }
+  if(btn){ btn.textContent='🔄'; btn.disabled=false; }
 }
 
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
