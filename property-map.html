@@ -534,18 +534,27 @@ function loadLocal(){ try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)||
 
 // Sheets sync
 async function loadFromSheets(){
-  try{
-    const res = await fetch(SCRIPT_URL, {redirect:'follow'});
-    const text = await res.text();
-    const data = JSON.parse(text);
-    if(data.status==='ok' && Array.isArray(data.properties)){
-      properties = data.properties;
-      saveLocal();
-      return true;
-    }
-    console.warn('Sheets response:', data);
-  }catch(e){ console.warn('Sheets load failed:', e.message); }
-  return false;
+  return new Promise((resolve)=>{
+    const cbName = 'cb_' + Date.now();
+    window[cbName] = function(data){
+      delete window[cbName];
+      document.getElementById('jsonpScript')?.remove();
+      if(data.status==='ok' && Array.isArray(data.properties)){
+        properties = data.properties;
+        saveLocal();
+        resolve(true);
+      } else {
+        console.warn('Sheets bad response:', data);
+        resolve(false);
+      }
+    };
+    const s = document.createElement('script');
+    s.id = 'jsonpScript';
+    s.src = SCRIPT_URL + '?callback=' + cbName;
+    s.onerror = ()=>{ delete window[cbName]; resolve(false); };
+    document.head.appendChild(s);
+    setTimeout(()=>{ if(window[cbName]){ delete window[cbName]; resolve(false); }}, 10000);
+  });
 }
 
 async function syncToSheets(action, property, id){
@@ -567,6 +576,7 @@ function load(){ properties = loadLocal(); }
 
 // ── Kakao Map ─────────────────────────────────────────────────────────────
 let map, markers={}, pinPopupEl=null, ps, poiOverlays=[];
+const TYPE_COLOR={sale:'#c17f3a',lease:'#1565c0',rent:'#ad1457'};
 
 kakao.maps.load(function(){
   const container=document.getElementById('map');
@@ -606,7 +616,6 @@ kakao.maps.load(function(){
 });
 
 // ── Markers ───────────────────────────────────────────────────────────────
-const TYPE_COLOR={sale:'#c17f3a',lease:'#1565c0',rent:'#ad1457'};
 
 function makeMarkerImage(type, isActive){
   const c=TYPE_COLOR[type]||'#2d5a3d';
