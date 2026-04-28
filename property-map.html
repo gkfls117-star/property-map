@@ -376,6 +376,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:0
 // ── Constants ─────────────────────────────────────────────────────────────
 const KRW_TO_CNY = 0.0052;
 const KAKAO_KEY = '5c41ceda44a443f7cf77ca18ca00b04e';
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQsfE3BeOLITPOO1Z2xhSgoEfFpnTQOLnOoc2_wG6o-pGM-NHfJXTsVeBLL2QKfReB9lh8G9VTB29m/pub?output=csv';
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx9pic56EFAxT1UD3alVrox1AEj_oAf3omrSdMLAg-ufx4x8I0CC5K1mo5UlQZaSq_74g/exec';
 
 // ── i18n ──────────────────────────────────────────────────────────────────
@@ -534,27 +535,46 @@ function loadLocal(){ try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)||
 
 // Sheets sync
 async function loadFromSheets(){
-  return new Promise((resolve)=>{
-    const cbName = 'cb_' + Date.now();
-    window[cbName] = function(data){
-      delete window[cbName];
-      document.getElementById('jsonpScript')?.remove();
-      if(data.status==='ok' && Array.isArray(data.properties)){
-        properties = data.properties;
-        saveLocal();
-        resolve(true);
-      } else {
-        console.warn('Sheets bad response:', data);
-        resolve(false);
+  try{
+    const res = await fetch(CSV_URL);
+    const text = await res.text();
+    const lines = text.trim().split('\n');
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g,''));
+    const typeMap = {'매매':'sale','전세':'lease','월세':'rent'};
+    const rows = lines.slice(1).filter(l=>l.trim()).map(line => {
+      // CSV parse (handle quoted commas)
+      const cols = [];
+      let cur = '', inQ = false;
+      for(let i=0; i<line.length; i++){
+        if(line[i]==='"') inQ=!inQ;
+        else if(line[i]===',' && !inQ){ cols.push(cur); cur=''; }
+        else cur+=line[i];
       }
-    };
-    const s = document.createElement('script');
-    s.id = 'jsonpScript';
-    s.src = SCRIPT_URL + '?callback=' + cbName;
-    s.onerror = ()=>{ delete window[cbName]; resolve(false); };
-    document.head.appendChild(s);
-    setTimeout(()=>{ if(window[cbName]){ delete window[cbName]; resolve(false); }}, 10000);
-  });
+      cols.push(cur);
+      const obj = {};
+      headers.forEach((h,i) => obj[h] = (cols[i]||'').trim());
+      obj['media'] = obj['이미지URL'] ? obj['이미지URL'].split(',').map(s=>s.trim()).filter(Boolean) : [];
+      obj['id'] = Number(obj['ID']) || Date.now();
+      obj['lat'] = Number(obj['위도']) || null;
+      obj['lng'] = Number(obj['경도']) || null;
+      obj['nameKo'] = obj['한국어이름'] || '';
+      obj['nameZh'] = obj['중국어이름'] || '';
+      obj['type'] = typeMap[obj['유형']] || 'rent';
+      obj['price'] = obj['가격'] || '';
+      obj['area'] = obj['면적'] || '';
+      obj['floor'] = obj['층수'] || '';
+      obj['memoKo'] = obj['한국어메모'] || '';
+      obj['memoZh'] = obj['중국어메모'] || '';
+      obj['gmapUrl'] = obj['구글맵URL'] || '';
+      return obj;
+    }).filter(p => p.id && p.nameKo);
+    if(rows.length > 0){
+      properties = rows;
+      saveLocal();
+      return true;
+    }
+  } catch(e){ console.warn('CSV load failed:', e.message); }
+  return false;
 }
 
 async function syncToSheets(action, property, id){
