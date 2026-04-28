@@ -914,9 +914,7 @@ function importData(event){
       else if(data && Array.isArray(data.properties)) incoming=data.properties;
       else if(data && Array.isArray(data.listings)) incoming=data.listings;
       if(!incoming){ alert(lang==='zh'?'文件格式无效。':'파일 형식이 올바르지 않아요. properties 배열을 찾을 수 없어요.'); return; }
-      const msg=lang==='zh'?'导入 '+incoming.length+' 个房源。
-现有数据将被覆盖，确定吗？':incoming.length+'건의 데이터를 가져옵니다.
-기존 데이터는 덮어씌워져요. 계속할까요?';
+      const msg=lang==='zh'?'导入 '+incoming.length+' 个房源。\n现有数据将被覆盖，确定吗？':incoming.length+'건의 데이터를 가져옵니다.\n기존 데이터는 덮어씌워져요. 계속할까요?';
       if(!confirm(msg)) return;
       properties.forEach(p=>removeMarker(p.id));
       properties=incoming; save();
