@@ -535,14 +535,16 @@ function loadLocal(){ try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)||
 // Sheets sync
 async function loadFromSheets(){
   try{
-    const res = await fetch(SCRIPT_URL);
-    const data = await res.json();
+    const res = await fetch(SCRIPT_URL, {redirect:'follow'});
+    const text = await res.text();
+    const data = JSON.parse(text);
     if(data.status==='ok' && Array.isArray(data.properties)){
       properties = data.properties;
       saveLocal();
       return true;
     }
-  }catch(e){ console.warn('Sheets load failed, using local:', e); }
+    console.warn('Sheets response:', data);
+  }catch(e){ console.warn('Sheets load failed:', e.message); }
   return false;
 }
 
@@ -553,10 +555,11 @@ async function syncToSheets(action, property, id){
     if(id) body.id = id;
     await fetch(SCRIPT_URL, {
       method:'POST',
+      redirect:'follow',
       headers:{'Content-Type':'text/plain'},
       body: JSON.stringify(body)
     });
-  }catch(e){ console.warn('Sheets sync failed:', e); }
+  }catch(e){ console.warn('Sheets sync failed:', e.message); }
 }
 
 function save(){ saveLocal(); }
@@ -1033,6 +1036,7 @@ async function refreshFromSheets(){
     activeId=null; renderList(); renderDetail(null); refreshMarkers();
     if(properties.length>0) selectProperty(properties[0].id);
   }
+  if(!ok) alert('데이터 불러오기 실패. 콘솔(F12)을 확인해주세요.');
   if(btn){ btn.textContent='🔄'; btn.disabled=false; }
 }
 
