@@ -1011,6 +1011,40 @@ async function refreshFromSheets(){
   if(btn){ btn.textContent='🔄'; btn.disabled=false; }
 }
 
+
+// ── Init ──────────────────────────────────────────────────────────────────
+kakao.maps.load(function(){
+  const container = document.getElementById('map');
+  const options = {center: new kakao.maps.LatLng(37.5665, 126.978), level: 5};
+  map = new kakao.maps.Map(container, options);
+  ps = new kakao.maps.services.Places();
+
+  kakao.maps.event.addListener(map, 'click', function(mouseEvent){
+    if(pendingId === null) return;
+    const p = properties.find(x => x.id === pendingId);
+    if(!p){ pendingId = null; hideHint(); return; }
+    const ll = mouseEvent.latLng;
+    p.lat = ll.getLat(); p.lng = ll.getLng();
+    save(); syncToSheets('update', p); addMarker(p);
+    pendingId = null; hideHint(); selectProperty(p.id);
+  });
+
+  load();
+  applyLang();
+  properties.forEach(p => addMarker(p));
+  renderList();
+  if(properties.length > 0) selectProperty(properties[0].id);
+
+  loadFromSheets().then(ok => {
+    if(ok){
+      Object.keys(markers).forEach(id => { markers[id].setMap(null); delete markers[id]; });
+      properties.forEach(p => addMarker(p));
+      renderList();
+      if(properties.length > 0) selectProperty(properties[0].id);
+    }
+  });
+});
+
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 </script>
 </body>
