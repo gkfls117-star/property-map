@@ -898,11 +898,11 @@ function saveProperty(){
   };
   if(editingId!==null){
     const p=properties.find(x=>x.id===editingId);
-    if(p){ Object.assign(p,fields); if(lat&&lng){p.lat=lat;p.lng=lng;} removeMarker(p.id); addMarker(p); save(); closeModal(); renderList(); renderDetail(p); refreshMarkers(); }
+    if(p){ Object.assign(p,fields); if(lat&&lng){p.lat=lat;p.lng=lng;} removeMarker(p.id); addMarker(p); save(); syncToSheets('update', p); closeModal(); renderList(); renderDetail(p); refreshMarkers(); }
   } else {
     const id=Date.now();
     const p={id,...fields,lat,lng};
-    properties.push(p); save(); closeModal();
+    properties.push(p); save(); syncToSheets('add', p); closeModal();
     if(p.lat&&p.lng){ addMarker(p); selectProperty(id); }
     else { pendingId=id; renderList(); renderDetail(p); showHint(t('pinHint')); }
   }
