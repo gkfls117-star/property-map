@@ -401,6 +401,7 @@ const T = {
     confirmDelete:'이 매물을 삭제하시겠어요?',noName:'매물 이름을 입력해주세요.',
     countSuffix:'건',addMediaBtn:'+ URL 추가',fabLabel:'매물 목록',
     poiEmpty:'검색 결과가 여기 표시됩니다.',
+    backBtn:'← 목록으로',
     typeOptions:['매매','전세','월세'],typeLabels:{sale:'매매',lease:'전세',rent:'월세'},
     poiCats:[
       {v:'CE7',l:'☕ 카페'},{v:'FD6',l:'🍽️ 식당'},{v:'CS2',l:'🏪 편의점'},
@@ -424,6 +425,7 @@ const T = {
     confirmDelete:'确定要删除此房源吗？',noName:'请输入房源名称。',
     countSuffix:'个',addMediaBtn:'+ 添加链接',fabLabel:'房源列表',
     poiEmpty:'搜索结果将显示在此处。',
+    backBtn:'← 返回列表',
     typeOptions:['出售','全租','月租'],typeLabels:{sale:'出售',lease:'全租',rent:'月租'},
     poiCats:[
       {v:'CE7',l:'☕ 咖啡厅'},{v:'FD6',l:'🍽️ 餐厅'},{v:'CS2',l:'🏪 便利店'},
@@ -468,6 +470,7 @@ function applyLang(){
   document.getElementById('btnAddMedia').textContent=t('addMediaBtn');
   document.getElementById('btnNearbyShortcut').innerHTML='🔍 '+t('nearbyBtn');
   document.getElementById('nearbyHint').textContent=t('nearbyDefault');
+  const backBtn=document.querySelector('.btn-back'); if(backBtn) backBtn.textContent=t('backBtn');
   // fType
   const fType=document.getElementById('fType');
   const prev=fType.value;
