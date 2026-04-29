@@ -81,6 +81,8 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:0
 
 /* ── Detail panel ── */
 .detail-panel{border-top:1px solid var(--border);background:var(--bg);padding:12px 14px;display:none;flex-shrink:0;max-height:50vh;overflow-y:auto}
+  .btn-back{display:none;align-items:center;gap:4px;font-size:12px;color:var(--accent);background:none;border:none;cursor:pointer;padding:0;margin-bottom:8px;font-family:inherit;font-weight:500}
+  @media(max-width:768px){.btn-back{display:flex}}
 .detail-panel.open{display:block}
 .dp-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
 .dp-name{font-size:14px;font-weight:500;flex:1;line-height:1.4}
@@ -243,6 +245,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:0
     <div class="sb-panel active" id="panelListings">
       <div class="sb-list" id="sbList"></div>
       <div class="detail-panel" id="detailPanel">
+        <button class="btn-back" onclick="closeDetailPanel()">← 목록으로</button>
         <div class="dp-header">
           <div class="dp-name" id="dpName"></div>
           <div class="dp-actions">
@@ -1046,6 +1049,15 @@ kakao.maps.load(function(){
     }
   });
 });
+
+
+function closeDetailPanel(){
+  document.getElementById('detailPanel').classList.remove('open');
+  activeId = null;
+  refreshMarkers();
+  // scroll list to top
+  document.getElementById('sbList').scrollTop = 0;
+}
 
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 </script>
